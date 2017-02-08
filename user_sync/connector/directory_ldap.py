@@ -57,7 +57,7 @@ class LDAPDirectoryConnector(object):
         caller_config = user_sync.config.DictConfig('"%s options"' % LDAPDirectoryConnector.name, caller_options)
         builder = user_sync.config.OptionsBuilder(caller_config)
         builder.set_string_value('group_filter_format', '(&(|(objectCategory=group)(objectClass=groupOfNames)(objectClass=posixGroup))(cn={group}))')
-        builder.set_string_value('all_users_filter', '(&(objectClass=user)(objectCategory=person)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))')
+        builder.set_string_value('all_users_filter', '(&(objectClass=user)(objectCategory=person))')
         builder.set_bool_value('require_tls_cert', False)
         builder.set_string_value('user_email_format', '{mail}')
         builder.set_string_value('user_username_format', None)
@@ -254,7 +254,7 @@ class LDAPDirectoryConnector(object):
         options = self.options
         base_dn = options['base_dn']
         
-        user_attribute_names = ["givenName", "sn", "c", "uid"]    
+        user_attribute_names = ["givenName", "sn", "c", "uid", "userAccountControl"]
         user_attribute_names.extend(self.user_email_formatter.get_attribute_names())
         user_attribute_names.extend(self.user_username_formatter.get_attribute_names())
         user_attribute_names.extend(self.user_domain_formatter.get_attribute_names())
@@ -297,7 +297,15 @@ class LDAPDirectoryConnector(object):
             uid = LDAPValueFormatter.get_attribute_value(record, 'uid')
             if (uid != None):
                 user['uid'] = uid
-            
+            user_account_control = LDAPValueFormatter.get_attribute_value(record, 'userAccountControl')
+            disabled = False
+            if (user_account_control != None):
+                # bit 2 of userAccountControl is set when an account has been disabled
+                if (int(user_account_control) & 2 != 0):
+                    disabled = True
+                    self.logger.debug("User: %s is set to disabled" % user['username'])
+            user['disabled'] = disabled
+
             yield (dn, user)
     
     def iter_search_result(self, base_dn, scope, filter_string, attributes):
