@@ -110,10 +110,10 @@ class RuleProcessor(object):
         '''
         :type mappings: dict(str, list(Group)
         '''                   
-        for dashboard_groups in mappings.itervalues():
-            for dashboard_group in dashboard_groups:
-                organization_info = self.get_organization_info(dashboard_group.organization_name)
-                organization_info.add_mapped_group(dashboard_group.group_name)
+        for dashboard_product_groups in mappings.itervalues():
+            for dashboard_product_group in dashboard_product_groups:
+                organization_info = self.get_organization_info(dashboard_product_group.organization_name)
+                organization_info.add_mapped_group(dashboard_product_group.group_name)
 
     def read_desired_user_groups(self, mappings, directory_connector):
         '''
@@ -153,11 +153,11 @@ class RuleProcessor(object):
             filtered_directory_user_by_user_key[user_key] = directory_user
             self.get_organization_info(OWNING_ORGANIZATION_NAME).add_desired_group_for(user_key, None)
             for group in directory_user['groups']:
-                dashboard_groups = mappings.get(group)
-                if (dashboard_groups != None):
-                    for dashboard_group in dashboard_groups:
-                        organization_info = self.get_organization_info(dashboard_group.organization_name)
-                        organization_info.add_desired_group_for(user_key, dashboard_group.group_name)
+                dashboard_product_groups = mappings.get(group)
+                if (dashboard_product_groups != None):
+                    for dashboard_product_group in dashboard_product_groups:
+                        organization_info = self.get_organization_info(dashboard_product_group.organization_name)
+                        organization_info.add_desired_group_for(user_key, dashboard_product_group.group_name)
     
         self.logger.info('Total directory users after filtering: %d', len(filtered_directory_user_by_user_key))        
         if (self.logger.isEnabledFor(logging.DEBUG)):        

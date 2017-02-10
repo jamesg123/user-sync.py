@@ -196,15 +196,15 @@ class ConfigLoader(object):
             if (groups == None):
                 adobe_groups_by_directory_group[directory_group] = groups = []
 
-            dashboard_groups_config = item.get_list_config('dashboard_groups')
-            for dashboard_group in dashboard_groups_config.iter_values(types.StringTypes):
-                parts = dashboard_group.split(GROUP_NAME_DELIMITER)
+            dashboard_product_groups_config = item.get_list_config('dashboard_product_groups')
+            for dashboard_product_group in dashboard_product_groups_config.iter_values(types.StringTypes):
+                parts = dashboard_product_group.split(GROUP_NAME_DELIMITER)
                 group_name = parts.pop()
                 organization_name = GROUP_NAME_DELIMITER.join(parts)
                 if (len(organization_name) == 0):
                     organization_name = user_sync.rules.OWNING_ORGANIZATION_NAME
                 if (len(group_name) == 0):
-                    validation_message = 'Bad dashboard group: "%s" in directory group: "%s"' % (dashboard_group, directory_group)
+                    validation_message = 'Bad dashboard product group: "%s" in directory group: "%s"' % (dashboard_product_group, directory_group)
                     raise user_sync.error.AssertionException(validation_message)                    
                 group = user_sync.rules.Group(group_name, organization_name)
                 groups.append(group)
