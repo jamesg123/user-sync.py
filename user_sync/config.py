@@ -196,22 +196,45 @@ class ConfigLoader(object):
             if (groups == None):
                 adobe_groups_by_directory_group[directory_group] = groups = []
 
-            dashboard_product_groups_config = item.get_list_config('dashboard_product_groups')
-            for dashboard_product_group in dashboard_product_groups_config.iter_values(types.StringTypes):
-                parts = dashboard_product_group.split(GROUP_NAME_DELIMITER)
-                group_name = parts.pop()
-                organization_name = GROUP_NAME_DELIMITER.join(parts)
-                if (len(organization_name) == 0):
-                    organization_name = user_sync.rules.OWNING_ORGANIZATION_NAME
-                if (len(group_name) == 0):
-                    validation_message = 'Bad dashboard product group: "%s" in directory group: "%s"' % (dashboard_product_group, directory_group)
-                    raise user_sync.error.AssertionException(validation_message)                    
-                group = user_sync.rules.Group(group_name, organization_name)
-                groups.append(group)
+            dashboard_product_groups_config = item.get_list_config('dashboard_product_groups', True)
+            dashboard_user_groups_config = item.get_list_config('dashboard_user_groups',True)
 
+            if (dashboard_product_groups_config != None):
+                self.process_dashboard_groups('product', groups, dashboard_product_groups_config, directory_group)
+                if (dashboard_user_groups_config != None):
+                    raise user_sync.error.AssertionException("dashboard user groups cannot be specified in conjunction with product groups")
+            else:
+                if (dashboard_user_groups_config != None):
+                    self.process_dashboard_groups('user', groups, dashboard_user_groups_config, directory_group)
+                else:
+                    raise user_sync.error.AssertionException("dashboard product or user group must be specified")
         return adobe_groups_by_directory_group
 
-    @staticmethod    
+
+    def process_dashboard_groups(self, group_type, groups, groups_config, directory_group):
+        '''
+        Build up a list of groups from the current directory group config
+        :param group_type: User or Product
+        :param groups: List of groups to add to
+        :param groups_config: List config for current directory group
+        :param directory_group: Current directory group
+        '''
+        for dashboard_group in groups_config.iter_values(types.StringTypes):
+            parts = dashboard_group.split(GROUP_NAME_DELIMITER)
+            group_name = parts.pop()
+            organization_name = GROUP_NAME_DELIMITER.join(parts)
+            if (len(organization_name) == 0):
+                organization_name = user_sync.rules.OWNING_ORGANIZATION_NAME
+            if (len(group_name) == 0):
+                validation_message = 'Bad dashboard group: "%s" in directory group: "%s"' % (
+                dashboard_group, directory_group)
+                raise user_sync.error.AssertionException(validation_message)
+
+            group = user_sync.rules.Group(group_type, group_name, organization_name)
+
+            groups.append(group)
+
+    @staticmethod
     def as_list(value):
         if (value == None):
             return []

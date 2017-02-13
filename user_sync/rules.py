@@ -650,11 +650,13 @@ class DashboardConnectors(object):
                 break
     
 class Group(object):
-    def __init__(self, group_name, organization_name):
+    def __init__(self, group_type, group_name, organization_name):
         '''
+        :type group_type: str
         :type group_name: str
         :type organization_name: str        
         '''
+        self.group_type = group_type
         self.group_name = group_name
         self.organization_name = organization_name
     
