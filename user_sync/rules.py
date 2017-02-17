@@ -650,14 +650,16 @@ class DashboardConnectors(object):
                 break
     
 class Group(object):
-    def __init__(self, group_name, organization_name):
+    def __init__(self, group_name, group_type, organization_name):
         '''
         :type group_name: str
-        :type organization_name: str        
+        :type group_type: str
+        :type organization_name: str
         '''
         self.group_name = group_name
+        self.group_type = group_type
         self.organization_name = organization_name
-    
+
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
 

@@ -28,6 +28,7 @@ import yaml
 from user_sync import credential_manager
 import user_sync.error
 import user_sync.identity_type
+import user_sync.dashboard_group_type
 import user_sync.rules
 
 DEFAULT_CONFIG_DIRECTORY = ''
@@ -197,8 +198,11 @@ class ConfigLoader(object):
                 adobe_groups_by_directory_group[directory_group] = groups = []
 
             dashboard_groups_config = item.get_list_config('dashboard_groups')
-            for dashboard_group in dashboard_groups_config.iter_values(types.StringTypes):
-                parts = dashboard_group.split(GROUP_NAME_DELIMITER)
+            for dashboard_group in dashboard_groups_config.iter_values(types.DictType):
+                dashboard_group_name = dashboard_group.get('name')
+                dashboard_group_type = dashboard_group.get('type')
+                group_type =  user_sync.dashboard_group_type.parse_group_type(dashboard_group_type)
+                parts = dashboard_group_name.split(GROUP_NAME_DELIMITER)
                 group_name = parts.pop()
                 organization_name = GROUP_NAME_DELIMITER.join(parts)
                 if (len(organization_name) == 0):
@@ -206,7 +210,7 @@ class ConfigLoader(object):
                 if (len(group_name) == 0):
                     validation_message = 'Bad dashboard group: "%s" in directory group: "%s"' % (dashboard_group, directory_group)
                     raise user_sync.error.AssertionException(validation_message)                    
-                group = user_sync.rules.Group(group_name, organization_name)
+                group = user_sync.rules.Group(group_type, dashboard_group_type, organization_name)
                 groups.append(group)
 
         return adobe_groups_by_directory_group
