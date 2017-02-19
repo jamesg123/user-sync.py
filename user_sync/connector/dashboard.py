@@ -185,8 +185,8 @@ class Commands(object):
             
         self.do_list.append(('create', params))
 
-    def remove_from_org(self):
-        self.do_list.append(('remove_from_organization', {}))
+    def remove_from_org(self, delete = False):
+        self.do_list.append(('remove_from_organization', {'delete_account': delete}))
 
     def __len__(self):
         return len(self.do_list)

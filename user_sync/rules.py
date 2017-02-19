@@ -42,8 +42,12 @@ class RuleProcessor(object):
             'update_user_info': True,
             
             'remove_user_key_list': None,
+            'delete_user_key_list': None,
+            'remove_entitlement_user_key_list': None,
             'remove_list_output_path': None,
             'remove_nonexistent_users': False,
+            'delete_nonexistent_users': False,
+            'remove_entitlements_for_nonexistent_users': False,
             'default_country_code': None
         }
         options.update(caller_options)        
@@ -52,12 +56,25 @@ class RuleProcessor(object):
         self.filtered_directory_user_by_user_key = {}
         self.organization_info_by_organization = {}
         self.adding_dashboard_user_key = set()
-        
-        remove_user_key_list = options['remove_user_key_list']
-        remove_user_key_list = set(remove_user_key_list) if (remove_user_key_list != None) else set()
+
+        remove_user_key_list = set()
+        if options['remove_user_key_list'] != None:
+            remove_user_key_list = set(options['remove_user_key_list'])
+        elif options['delete_user_key_list'] != None:
+            remove_user_key_list = set(options['delete_user_key_list'])
+        elif options['delete_user_key_list'] != None:
+            remove_user_key_list = set(options['remove_entitlement_user_key_list'])
         self.remove_user_key_list = remove_user_key_list
-        
-        self.need_to_process_orphaned_dashboard_users = options['remove_list_output_path'] != None or options['remove_nonexistent_users']
+
+        self.remove_nonexistent_users = options['remove_nonexistent_users']
+        self.delete_nonexistent_users = options['delete_nonexistent_users']
+        self.remove_entitlements_for_nonexistent_users = options['remove_entitlements_for_nonexistent_users']
+
+        self.need_to_process_orphaned_dashboard_users = options['remove_list_output_path'] != None or \
+                                                        options['remove_nonexistent_users'] or \
+                                                        options['delete_nonexistent_users'] or \
+                                                        options['remove_entitlements_for_nonexistent_users']
+
                 
         self.logger = logger = logging.getLogger('processor')
         
@@ -226,15 +243,14 @@ class RuleProcessor(object):
             
         options = self.options
         remove_list_output_path = options['remove_list_output_path']
-        remove_nonexistent_users = options['remove_nonexistent_users']
-        
+
         orphaned_federated_dashboard_users = list(self.iter_orphaned_federated_dashboard_users())
         self.logger.info('Federated orphaned users to be removed: %s', [self.get_dashboard_user_key(dashboard_user) for dashboard_user in orphaned_federated_dashboard_users])        
         
         if (remove_list_output_path != None):
             self.logger.info('Writing remove list to: %s', remove_list_output_path)
             self.write_remove_list(remove_list_output_path, orphaned_federated_dashboard_users)
-        elif (remove_nonexistent_users):
+        elif (self.remove_nonexistent_users or self.delete_nonexistent_users or self.remove_entitlements_for_nonexistent_users):
             for dashboard_user in orphaned_federated_dashboard_users:
                 user_key = self.get_dashboard_user_key(dashboard_user)
                 remove_user_key_list.add(user_key)
@@ -263,7 +279,13 @@ class RuleProcessor(object):
                     self.logger.info('Removing user for user key: %s', user_key)
                     username, domain = self.parse_user_key(user_key)
                     commands = user_sync.connector.dashboard.Commands(username=username, domain=domain)
-                    commands.remove_from_org()
+                    if self.remove_nonexistent_users:
+                        commands.remove_from_org()
+                    elif self.delete_nonexistent_users:
+                        commands.remove_from_org(True)
+                    elif self.remove_entitlements_for_nonexistent_users:
+                        commands.remove_all_groups()
+
                     dashboard_connectors.get_owning_connector().send_commands(commands)
 
         def on_remove_groups_callback(user_key):

@@ -57,8 +57,12 @@ class ConfigLoader(object):
             'update_user_info': True,
             
             'remove_user_key_list': None,
+            'delete_user_key_list': None,
+            'remove_entitlement_user_key_list': None,
             'remove_list_output_path': None,
-            'remove_nonexistent_users': False
+            'remove_nonexistent_users': False,
+            'delete_nonexistent_users': False,
+            'remove_entitlements_for_nonexistent_users': False
         }
         options.update(caller_options)     
 
@@ -321,8 +325,12 @@ class ConfigLoader(object):
             'manage_groups': options['manage_groups'],
             'update_user_info': options['update_user_info'],
             'remove_user_key_list': options['remove_user_key_list'],
+            'delete_user_key_list': options['delete_user_key_list'],
+            'remove_entitlement_user_key_list': options['remove_entitlement_user_key_list'],
             'remove_list_output_path': options['remove_list_output_path'],
             'remove_nonexistent_users': options['remove_nonexistent_users'],
+            'delete_nonexistent_users': options['delete_nonexistent_users'],
+            'remove_entitlements_for_nonexistent_users': options['remove_entitlements_for_nonexistent_users'],
             'default_country_code': default_country_code
         }
         return result
