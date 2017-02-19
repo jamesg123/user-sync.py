@@ -67,14 +67,26 @@ def process_args():
                         help="if the membership in mapped groups differs between the customer side and the Adobe side, the group membership is updated on the Adobe side so that the memberships in mapped groups matches the customer side.", 
                         action='store_true', dest='manage_groups')
     parser.add_argument('--remove-nonexistent-users',
-                        help='Causes the user sync tool to remove Federated users that exist on the Adobe side if they are not in the customer side AD. This has the effect of deleting the user account if that account is owned by the organization under which the sync operation is being run.',
+                        help='Causes the user sync tool to remove Federated users that exist on the Adobe side if they are not in the customer side AD. This has the effect of removing the user account if that account is owned by the organization under which the sync operation is being run.',
                         action='store_true', dest='remove_nonexistent_users')
+    parser.add_argument('--delete-nonexistent-users',
+                        help='Causes the user sync tool to delete Federated users that exist on the Adobe side if they are not in the customer side AD. This has the effect of deleting the user account if that account is owned by the organization under which the sync operation is being run.',
+                        action='store_true', dest='delete_nonexistent_users')
+    parser.add_argument('--remove-entitlements-for-nonexistent-users',
+                        help='Causes the user sync tool to remove entitlements from Federated users that exist on the Adobe side if they are not in the customer side AD.',
+                        action='store_true', dest='remove_entitlements_for_nonexistent_users')
     parser.add_argument('--generate-remove-list',
                         help='processing similar to --remove-nonexistent-users except that rather than performing removals, a file is generated (with the given pathname) listing users who would be removed. This file can then be given in the --remove-list argument in a subsequent run.',
                         metavar='output_path', dest='remove_list_output_path')
-    parser.add_argument('-d', '--remove-list',
+    parser.add_argument('-r', '--remove-list',
                         help='specifies the file containing the list of users to be removed. Users on this list are removeFromOrg\'ed on the Adobe side.',
                         metavar='input_path', dest='remove_list_input_path')
+    parser.add_argument('-d', '--delete-list',
+                        help='specifies the file containing the list of users to be deleted. Users on this list are removed from domain on the Adobe side.',
+                        metavar='input_path', dest='delete_list_input_path')
+    parser.add_argument('-e', '--remove-entitlement-list',
+                        help='specifies the file containing the list of users to have their entitlements removed. Users on this list are remove from all groups on the Adobe side.',
+                        metavar='input_path', dest='remove_entitlement_list_input_path')
     return parser.parse_args()
 
 def init_console_log():
@@ -207,21 +219,66 @@ def create_config_loader_options(args):
         except Exception as e:
             raise user_sync.error.AssertionException("Bad regular expression for --user-filter: %s reason: %s" % (username_filter_pattern, e.message))
         config_options['username_filter_regex'] = compiled_expression
-
+    input_lists = 0
     remove_list_input_path = args.remove_list_input_path
     if (remove_list_input_path != None):
         logger.info('Reading remove list from: %s', remove_list_input_path)
-        remove_user_key_list = user_sync.rules.RuleProcessor.read_remove_list(remove_list_input_path, logger = logger)
+        remove_user_key_list = user_sync.rules.RuleProcessor.read_user_list(remove_list_input_path, logger = logger)
         logger.info('Total users in remove list: %d', len(remove_user_key_list))
         config_options['remove_user_key_list'] = remove_user_key_list
+        input_lists += 1
+
+    delete_list_input_path = args.delete_list_input_path
+    if (delete_list_input_path != None):
+        logger.info('Reading delete list from: %s', delete_list_input_path)
+        delete_user_key_list = user_sync.rules.RuleProcessor.read_user_list(delete_list_input_path, logger = logger)
+        logger.info('Total users in delete list: %d', len(delete_user_key_list))
+        config_options['delete_user_key_list'] = delete_user_key_list
+        input_lists += 1
+
+    remove_entitlement_list_input_path = args.remove_entitlement_list_input_path
+    if (remove_entitlement_list_input_path != None):
+        logger.info('Reading remove entitlement list from: %s', remove_entitlement_list_input_path)
+        remove_entitlement_user_key_list = user_sync.rules.RuleProcessor.read_user_list(remove_entitlement_list_input_path, logger = logger)
+        logger.info('Total users in remove entitlement list: %d', len(remove_entitlement_user_key_list))
+        config_options['remove_entitlement_user_key_list'] = remove_entitlement_user_key_list
+        input_lists += 1
+
+    if input_lists > 1:
+        raise user_sync.error.AssertionException("Only one of the options: --delete_list_input_path, --remove_list_input_path and --remove_entitlement_list_input_path can be specified.")
 
     config_options['remove_list_output_path'] = remove_list_output_path = args.remove_list_output_path
     remove_nonexistent_users = args.remove_nonexistent_users
-    if (remove_nonexistent_users and remove_list_output_path):
-        remove_nonexistent_users = False
-        logger.warn('--remove-nonexistent-users ignored when --generate-remove-list is specified')
+    delete_nonexistent_users = args.delete_nonexistent_users
+    remove_entitlements_for_nonexistent_users = args.remove_entitlements_for_nonexistent_users
+
+    user_removal_options = 0
+    if (remove_nonexistent_users):
+        user_removal_options += 1
+        if (remove_list_output_path):
+            remove_nonexistent_users = False
+            logger.warn('--remove-nonexistent-users ignored when --generate-remove-list is specified')
+    if (delete_nonexistent_users):
+        user_removal_options += 1
+        if (remove_list_output_path):
+            delete_nonexistent_users = False
+            logger.warn('--delete-nonexistent-users ignored when --generate-remove-list is specified')
+    if (remove_entitlements_for_nonexistent_users):
+        user_removal_options += 1
+        if (remove_list_output_path):
+            remove_entitlements_for_nonexistent_users = False
+            logger.warn('--remove-entitlements-for-nonexistent-users ignored when --generate-remove-list is specified')
+
+    if user_removal_options > 1:
+        raise user_sync.error.AssertionException("Only one of the options: --remove-nonexistent-users, --delete_nonexistent_users and --remove_entitlements_for_nonexistent_users can be specified.")
+
+    if user_removal_options > 0 and input_lists > 0 :
+        raise user_sync.error.AssertionException("Options --remove-nonexistent-users, --delete_nonexistent_users and --remove_entitlements_for_nonexistent_users cannot be used in conjunction with a list.")
+
     config_options['remove_nonexistent_users'] = remove_nonexistent_users
-                    
+    config_options['delete_nonexistent_users'] = delete_nonexistent_users
+    config_options['remove_entitlements_for_nonexistent_users'] = remove_entitlements_for_nonexistent_users
+
     source_filter_args = args.source_filter_args
     if (source_filter_args != None):
         source_filter_args_separator_index = source_filter_args.find(':')

@@ -583,7 +583,7 @@ class RuleProcessor(object):
         return RuleProcessor.parse_user_key(user_key)[0]
     
     @staticmethod
-    def read_remove_list(file_path, delimiter = None, logger = None):
+    def read_user_list(file_path, delimiter = None, logger = None):
         '''
         :type file_path: str
         :type delimiter: str
