@@ -68,7 +68,7 @@ def process_args():
                         action='store_true', dest='manage_groups')
     parser.add_argument('--remove-nonexistent-users',
                         help='Causes the user sync tool to remove Federated users that exist on the Adobe side if they are not in the customer side AD. This has the effect of deleting the user account if that account is owned by the organization under which the sync operation is being run.',
-                        action='store_true', dest='remove_nonexistent_users')
+                        action='store_true', dest='delete_nonexistent_users')
     parser.add_argument('--generate-remove-list',
                         help='processing similar to --remove-nonexistent-users except that rather than performing removals, a file is generated (with the given pathname) listing users who would be removed. This file can then be given in the --remove-list argument in a subsequent run.',
                         metavar='output_path', dest='remove_list_output_path')
@@ -216,11 +216,11 @@ def create_config_loader_options(args):
         config_options['remove_user_key_list'] = remove_user_key_list
          
     config_options['remove_list_output_path'] = remove_list_output_path = args.remove_list_output_path
-    remove_nonexistent_users = args.remove_nonexistent_users
-    if (remove_nonexistent_users and remove_list_output_path):
-        remove_nonexistent_users = False
+    delete_nonexistent_users = args.delete_nonexistent_users
+    if (delete_nonexistent_users and remove_list_output_path):
+        delete_nonexistent_users = False
         logger.warn('--remove-nonexistent-users ignored when --generate-remove-list is specified')    
-    config_options['remove_nonexistent_users'] = remove_nonexistent_users
+    config_options['delete_nonexistent_users'] = delete_nonexistent_users
                     
     source_filter_args = args.source_filter_args
     if (source_filter_args != None):
