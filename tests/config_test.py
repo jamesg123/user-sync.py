@@ -100,7 +100,7 @@ class ConfigLoaderTest(unittest.TestCase):
                                                               'default_country_code': 'test',
                                                               'remove_user_key_list': None,
                                                               'remove_list_output_path': None,
-                                                              'delete_nonexistent_users': False},
+                                                              'remove_nonexistent_users': False},
                           'rule options are returned')
 
     def test_parse_string(self):

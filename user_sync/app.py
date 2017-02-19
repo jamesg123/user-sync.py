@@ -68,7 +68,7 @@ def process_args():
                         action='store_true', dest='manage_groups')
     parser.add_argument('--remove-nonexistent-users',
                         help='Causes the user sync tool to remove Federated users that exist on the Adobe side if they are not in the customer side AD. This has the effect of deleting the user account if that account is owned by the organization under which the sync operation is being run.',
-                        action='store_true', dest='delete_nonexistent_users')
+                        action='store_true', dest='remove_nonexistent_users')
     parser.add_argument('--generate-remove-list',
                         help='processing similar to --remove-nonexistent-users except that rather than performing removals, a file is generated (with the given pathname) listing users who would be removed. This file can then be given in the --remove-list argument in a subsequent run.',
                         metavar='output_path', dest='remove_list_output_path')
@@ -93,9 +93,9 @@ def init_log(logging_config):
     builder.set_bool_value('log_to_file', False)
     builder.set_string_value('file_log_directory', 'logs')
     builder.set_string_value('file_log_level', 'debug')
-    builder.set_string_value('console_log_level', None)    
+    builder.set_string_value('console_log_level', None)
     options = builder.get_options()
-        
+
     level_lookup = {
         'debug': logging.DEBUG,
         'info': logging.INFO,
@@ -103,23 +103,23 @@ def init_log(logging_config):
         'error': logging.ERROR,
         'critical': logging.CRITICAL
     }
-    
+
     console_log_level = level_lookup.get(options['console_log_level'])
     if (console_log_level != None):
         console_log_handler.setLevel(console_log_level)
-    
+
     if options['log_to_file'] == True:
         file_log_level = level_lookup.get(options['file_log_level'], logging.NOTSET)
         file_log_directory = options['file_log_directory']
         if not os.path.exists(file_log_directory):
             os.makedirs(file_log_directory)
-        
+
         file_path = os.path.join(file_log_directory, datetime.date.today().isoformat() + ".log")
         fileHandler = logging.FileHandler(file_path)
         fileHandler.setLevel(file_log_level)
-        fileHandler.setFormatter(logging.Formatter(LOG_STRING_FORMAT, LOG_DATE_FORMAT))        
+        fileHandler.setFormatter(logging.Formatter(LOG_STRING_FORMAT, LOG_DATE_FORMAT))
         logging.getLogger().addHandler(fileHandler)
-        
+
 def begin_work(config_loader):
     '''
     :type config_loader: user_sync.config.ConfigLoader
@@ -137,36 +137,36 @@ def begin_work(config_loader):
             if (organization_name != user_sync.rules.OWNING_ORGANIZATION_NAME):
                 referenced_organization_names.add(organization_name)
     referenced_organization_names.difference_update(trustee_dashboard_configs.iterkeys())
-    
+
     if (len(referenced_organization_names) > 0):
-        raise user_sync.error.AssertionException('dashboard_groups have references to unknown trustee dashboards: %s' % referenced_organization_names) 
-                
+        raise user_sync.error.AssertionException('dashboard_groups have references to unknown trustee dashboards: %s' % referenced_organization_names)
+
     directory_connector = None
     directory_connector_options = None
     directory_connector_module_name = config_loader.get_directory_connector_module_name()
     if (directory_connector_module_name != None):
-        directory_connector_module = __import__(directory_connector_module_name, fromlist=[''])    
-        directory_connector = user_sync.connector.directory.DirectoryConnector(directory_connector_module)        
+        directory_connector_module = __import__(directory_connector_module_name, fromlist=[''])
+        directory_connector = user_sync.connector.directory.DirectoryConnector(directory_connector_module)
         directory_connector_options = config_loader.get_directory_connector_options(directory_connector.name)
 
     config_loader.check_unused_config_keys()
-        
+
     if (directory_connector != None and directory_connector_options != None):
         directory_connector.initialize(directory_connector_options)
-    
+
     dashboard_owning_connector = user_sync.connector.dashboard.DashboardConnector("owning", owning_dashboard_config)
-    dashboard_trustee_connectors = {}    
+    dashboard_trustee_connectors = {}
     for trustee_organization_name, trustee_config in trustee_dashboard_configs.iteritems():
         dashboard_trustee_conector = user_sync.connector.dashboard.DashboardConnector("trustee.%s" % trustee_organization_name, trustee_config)
-        dashboard_trustee_connectors[trustee_organization_name] = dashboard_trustee_conector 
+        dashboard_trustee_connectors[trustee_organization_name] = dashboard_trustee_conector
     dashboard_connectors = user_sync.rules.DashboardConnectors(dashboard_owning_connector, dashboard_trustee_connectors)
 
     rule_processor = user_sync.rules.RuleProcessor(rule_config)
     if (len(directory_groups) == 0 and rule_processor.will_manage_groups()):
         logger.warn('no groups mapped in config file')
     rule_processor.run(directory_groups, directory_connector, dashboard_connectors)
-    
-    
+
+
 def create_config_loader(args):
     config_bootstrap_options = {
         'config_directory': args.config_path,
@@ -174,12 +174,12 @@ def create_config_loader(args):
     }
     config_loader = user_sync.config.ConfigLoader(config_bootstrap_options)
     return config_loader
-            
+
 def create_config_loader_options(args):
     config_options = {
-        'test_mode': args.test_mode,        
+        'test_mode': args.test_mode,
         'manage_groups': args.manage_groups,
-        'update_user_info': args.update_user_info,        
+        'update_user_info': args.update_user_info,
     }
 
     users_args = args.users
@@ -192,35 +192,35 @@ def create_config_loader_options(args):
                 raise user_sync.error.AssertionException('Missing file path for --users %s [file_path]' % users_action)
             config_options['directory_connector_module_name'] = 'user_sync.connector.directory_csv'
             config_options['directory_connector_overridden_options'] = {'file_path': users_args.pop(0)}
-        elif (users_action == 'group'):            
+        elif (users_action == 'group'):
             if (len(users_args) == 0):
                 raise user_sync.error.AssertionException('Missing groups for --users %s [groups]' % users_action)
             config_options['directory_connector_module_name'] = 'user_sync.connector.directory_ldap'
             config_options['directory_group_filter'] = users_args.pop(0).split(',')
         else:
             raise user_sync.error.AssertionException('Unknown argument --users %s' % users_action)
-    
-    username_filter_pattern = args.username_filter_pattern 
+
+    username_filter_pattern = args.username_filter_pattern
     if (username_filter_pattern):
         try:
             compiled_expression = re.compile(username_filter_pattern, re.IGNORECASE)
         except Exception as e:
             raise user_sync.error.AssertionException("Bad regular expression for --user-filter: %s reason: %s" % (username_filter_pattern, e.message))
         config_options['username_filter_regex'] = compiled_expression
-    
+
     remove_list_input_path = args.remove_list_input_path
     if (remove_list_input_path != None):
         logger.info('Reading remove list from: %s', remove_list_input_path)
         remove_user_key_list = user_sync.rules.RuleProcessor.read_remove_list(remove_list_input_path, logger = logger)
         logger.info('Total users in remove list: %d', len(remove_user_key_list))
         config_options['remove_user_key_list'] = remove_user_key_list
-         
+
     config_options['remove_list_output_path'] = remove_list_output_path = args.remove_list_output_path
-    delete_nonexistent_users = args.delete_nonexistent_users
-    if (delete_nonexistent_users and remove_list_output_path):
-        delete_nonexistent_users = False
-        logger.warn('--remove-nonexistent-users ignored when --generate-remove-list is specified')    
-    config_options['delete_nonexistent_users'] = delete_nonexistent_users
+    remove_nonexistent_users = args.remove_nonexistent_users
+    if (remove_nonexistent_users and remove_list_output_path):
+        remove_nonexistent_users = False
+        logger.warn('--remove-nonexistent-users ignored when --generate-remove-list is specified')
+    config_options['remove_nonexistent_users'] = remove_nonexistent_users
                     
     source_filter_args = args.source_filter_args
     if (source_filter_args != None):

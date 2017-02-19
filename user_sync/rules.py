@@ -43,7 +43,7 @@ class RuleProcessor(object):
             
             'remove_user_key_list': None,
             'remove_list_output_path': None,
-            'delete_nonexistent_users': False,
+            'remove_nonexistent_users': False,
             'default_country_code': None
         }
         options.update(caller_options)        
@@ -57,7 +57,7 @@ class RuleProcessor(object):
         remove_user_key_list = set(remove_user_key_list) if (remove_user_key_list != None) else set()
         self.remove_user_key_list = remove_user_key_list
         
-        self.need_to_process_orphaned_dashboard_users = options['remove_list_output_path'] != None or options['delete_nonexistent_users']
+        self.need_to_process_orphaned_dashboard_users = options['remove_list_output_path'] != None or options['remove_nonexistent_users']
                 
         self.logger = logger = logging.getLogger('processor')
         
@@ -226,7 +226,7 @@ class RuleProcessor(object):
             
         options = self.options
         remove_list_output_path = options['remove_list_output_path']
-        delete_nonexistent_users = options['delete_nonexistent_users']
+        remove_nonexistent_users = options['remove_nonexistent_users']
         
         orphaned_federated_dashboard_users = list(self.iter_orphaned_federated_dashboard_users())
         self.logger.info('Federated orphaned users to be removed: %s', [self.get_dashboard_user_key(dashboard_user) for dashboard_user in orphaned_federated_dashboard_users])        
@@ -234,7 +234,7 @@ class RuleProcessor(object):
         if (remove_list_output_path != None):
             self.logger.info('Writing remove list to: %s', remove_list_output_path)
             self.write_remove_list(remove_list_output_path, orphaned_federated_dashboard_users)
-        elif (delete_nonexistent_users):
+        elif (remove_nonexistent_users):
             for dashboard_user in orphaned_federated_dashboard_users:
                 user_key = self.get_dashboard_user_key(dashboard_user)
                 remove_user_key_list.add(user_key)
